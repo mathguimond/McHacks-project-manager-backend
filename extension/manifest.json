@@ -1,0 +1,22 @@
+{
+  "name": "ScrumSensei",
+  "description": "An AI bot that helps you create tasks!",
+  "version": "0.0.1",
+  "manifest_version": 3,
+  "action": {
+    "default_popup": "popup.html",
+    "default_icon": "icon.png"
+  },
+  "content_scripts": [
+    {
+      "js": ["content.js"],
+      "matches": ["https://openproject.chiem.me/*"]
+    }
+  ],
+  "web_accessible_resources": [
+    {
+      "resources": ["injected.html"],
+      "matches": ["https://openproject.chiem.me/*"]
+    }
+  ]
+}
