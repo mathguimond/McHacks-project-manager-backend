@@ -3,6 +3,7 @@
   "description": "An AI bot that helps you create tasks!",
   "version": "0.0.1",
   "manifest_version": 3,
+  "permissions": ["storage"],
   "action": {
     "default_popup": "popup.html",
     "default_icon": "icon.png"

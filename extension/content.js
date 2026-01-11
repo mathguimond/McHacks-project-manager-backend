@@ -1,4 +1,4 @@
-const serverUrl = "http://localhost:8000/sendMessage"
+const serverUrl = "http://localhost:8000/sendMessage";
 const htmlUrl = chrome.runtime.getURL("injected.html");
 
 fetch(htmlUrl)
@@ -17,9 +17,24 @@ fetch(htmlUrl)
     const chatHistory = document.getElementById("chatHistory");
     const sendBtn = document.getElementById("sendBtn");
 
+    // Load chat history from storage on page load
+    chrome.storage.local.get(["chatMessages", "chatOpen"], (data) => {
+      if (data.chatMessages) {
+        chatHistory.innerHTML = data.chatMessages.join("");
+        chatHistory.scrollTop = chatHistory.scrollHeight;
+      }
+      if (data.chatOpen) {
+        chatWindow.classList.add("active");
+      }
+    });
+
     // Toggle chat window on click
     chatBtn.addEventListener("click", () => {
       chatWindow.classList.toggle("active");
+      // Save open/close state
+      chrome.storage.local.set({
+        chatOpen: chatWindow.classList.contains("active"),
+      });
     });
 
     // Send message function
@@ -34,14 +49,16 @@ fetch(htmlUrl)
       chatHistory.scrollTop = chatHistory.scrollHeight;
       chatInput.value = "";
 
+      saveChatHistory();
+
       // Get response
       const response = await fetch(serverUrl, {
         method: "POST",
         headers: {
-          "Content-Type": "application/json"
+          "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          "message": msg,
+          message: msg,
         }),
       });
       const result = await response.json();
@@ -51,11 +68,23 @@ fetch(htmlUrl)
       botMsg.innerHTML = `<strong>Bot:</strong> ${result}`;
       chatHistory.appendChild(botMsg);
       chatHistory.scrollTop = chatHistory.scrollHeight;
+
+      saveChatHistory();
+
+      window.location.reload();
     }
 
     sendBtn.addEventListener("click", sendMessage);
     chatInput.addEventListener("keypress", (e) => {
       if (e.key === "Enter") sendMessage();
     });
+
+    // Save chat history to chrome.storage
+    function saveChatHistory() {
+      const messages = Array.from(chatHistory.children).map(
+        (el) => el.outerHTML
+      );
+      chrome.storage.local.set({ chatMessages: messages });
+    }
   })
   .catch((err) => console.error(err));

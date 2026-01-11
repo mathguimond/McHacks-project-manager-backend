@@ -65,3 +65,7 @@ Thumbs.db
 .mypy_cache/
 .dmypy.json
 dmypy.json
+
+# Nix
+.venv
+.direnv
