@@ -1,3 +1,4 @@
+const serverUrl = "http://localhost:8000/sendMessage"
 const htmlUrl = chrome.runtime.getURL("injected.html");
 
 fetch(htmlUrl)
@@ -34,16 +35,20 @@ fetch(htmlUrl)
       chatInput.value = "";
 
       // Get response
-      // const response = await fetch("http://localhost", {
-      //   method: "POST",
-      //   body: {},
-      // });
-      // const result = await response.json();
-      const message = "test";
+      const response = await fetch(serverUrl, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          "message": msg,
+        }),
+      });
+      const result = await response.json();
 
       // Add response message to chat history
       const botMsg = document.createElement("div");
-      botMsg.innerHTML = `<strong>Bot:</strong> ${message}`;
+      botMsg.innerHTML = `<strong>Bot:</strong> ${result}`;
       chatHistory.appendChild(botMsg);
       chatHistory.scrollTop = chatHistory.scrollHeight;
     }
