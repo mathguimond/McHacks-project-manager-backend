@@ -5,16 +5,16 @@ create_project_tool = {
         "type": "function",
         "function": {
             "name": "create_project",
-            "description": "Create a new project with a name and optional description and status explanation",
+            "description": "Create a new project with a name and optional description, public status and status explanation",
             "parameters": {
                 "type": "object",
                 "properties": {
                     "name": {"type": "string", "description": "Project name"},
                     "public": {"type": "boolean", "description": "Whether the project is public"},
                     "description": {"type": "string", "description": "Project description"},
-                    "status_explanation": {"type": "string", "description": "Explanation of the project status"}
+                    "status_explanation": {"type": "string", "description": "Explanation of the project completion status (status is: NOT STARTED)"}
                 },
-                "required": ["name", "identifier"]
+                "required": ["name"]
             }
         }
     }
