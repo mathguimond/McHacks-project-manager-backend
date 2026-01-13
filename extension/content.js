@@ -1,90 +1,108 @@
 const serverUrl = "http://localhost:8000/sendMessage";
 const htmlUrl = chrome.runtime.getURL("injected.html");
 
-fetch(htmlUrl)
-  .then((response) => response.text())
-  .then((htmlText) => {
-    // Inject the HTML string into the body
-    document.body.insertAdjacentHTML("beforeend", htmlText);
+let lastUrl = location.href;
 
-    // --------------------------------------------------------
-    // Event Listeners
-    // --------------------------------------------------------
+function injectChat() {
+  // Prevent duplicate injection
+  if (document.getElementById("chatBtn")) return;
 
-    const chatBtn = document.getElementById("chatBtn");
-    const chatWindow = document.getElementById("chatWindow");
-    const chatInput = document.getElementById("chatInput");
-    const chatHistory = document.getElementById("chatHistory");
-    const sendBtn = document.getElementById("sendBtn");
+  fetch(htmlUrl)
+    .then((response) => response.text())
+    .then((htmlText) => {
+      document.body.insertAdjacentHTML("beforeend", htmlText);
 
-    // Load chat history from storage on page load
-    chrome.storage.local.get(["chatMessages", "chatOpen"], (data) => {
-      if (data.chatMessages) {
-        chatHistory.innerHTML = data.chatMessages.join("");
+      const chatBtn = document.getElementById("chatBtn");
+      const chatWindow = document.getElementById("chatWindow");
+      const chatInput = document.getElementById("chatInput");
+      const chatHistory = document.getElementById("chatHistory");
+      const sendBtn = document.getElementById("sendBtn");
+
+      chrome.storage.local.get(["chatMessages", "chatOpen"], (data) => {
+        if (data.chatMessages) {
+          chatHistory.innerHTML = data.chatMessages.join("");
+          chatHistory.scrollTop = chatHistory.scrollHeight;
+        }
+        if (data.chatOpen) {
+          chatWindow.classList.add("active");
+        }
+      });
+
+      chatBtn.addEventListener("click", () => {
+        chatWindow.classList.toggle("active");
+        chrome.storage.local.set({
+          chatOpen: chatWindow.classList.contains("active"),
+        });
+      });
+
+      async function sendMessage() {
+        const msg = chatInput.value.trim();
+        if (!msg) return;
+
+        const userMsg = document.createElement("div");
+        userMsg.innerHTML = `<strong>You:</strong> ${msg}`;
+        chatHistory.appendChild(userMsg);
         chatHistory.scrollTop = chatHistory.scrollHeight;
+        chatInput.value = "";
+
+        saveChatHistory();
+
+        const botMsg = document.createElement("div");
+        botMsg.innerHTML = `<strong>Bot:</strong> Thinking...`;
+        chatHistory.appendChild(botMsg);
+
+        const response = await fetch(serverUrl, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            message: msg,
+          }),
+        });
+        const result = await response.json();
+        const message = result.message;
+
+        // Typing effect
+        let i = 0;
+        function typeChar() {
+          if (i <= message.length) {
+            botMsg.innerHTML = `<strong>Bot:</strong> ${message.slice(0, i)}<span class="typing-cursor">|</span>`;
+            chatHistory.scrollTop = chatHistory.scrollHeight;
+            i++;
+            setTimeout(typeChar, 30); // Adjust typing speed here (ms per char)
+          } else {
+            botMsg.innerHTML = `<strong>Bot:</strong> ${message}`;
+            chatHistory.scrollTop = chatHistory.scrollHeight;
+            saveChatHistory();
+            window.location.reload();
+          }
+        }
+        typeChar();
       }
-      if (data.chatOpen) {
-        chatWindow.classList.add("active");
+
+      sendBtn.addEventListener("click", sendMessage);
+      chatInput.addEventListener("keypress", (e) => {
+        if (e.key === "Enter") sendMessage();
+      });
+
+      function saveChatHistory() {
+        const messages = Array.from(chatHistory.children).map(
+          (el) => el.outerHTML
+        );
+        chrome.storage.local.set({ chatMessages: messages });
       }
-    });
+    })
+    .catch((err) => console.error(err));
+}
 
-    // Toggle chat window on click
-    chatBtn.addEventListener("click", () => {
-      chatWindow.classList.toggle("active");
-      // Save open/close state
-      chrome.storage.local.set({
-        chatOpen: chatWindow.classList.contains("active"),
-      });
-    });
+// Initial injection
+injectChat();
 
-    // Send message function
-    async function sendMessage() {
-      const msg = chatInput.value.trim();
-      if (!msg) return;
-
-      // Add user message to chat history
-      const userMsg = document.createElement("div");
-      userMsg.innerHTML = `<strong>You:</strong> ${msg}`;
-      chatHistory.appendChild(userMsg);
-      chatHistory.scrollTop = chatHistory.scrollHeight;
-      chatInput.value = "";
-
-      saveChatHistory();
-
-      // Get response
-      const response = await fetch(serverUrl, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          message: msg,
-        }),
-      });
-      const result = await response.json();
-
-      // Add response message to chat history
-      const botMsg = document.createElement("div");
-      botMsg.innerHTML = `<strong>Bot:</strong> ${result}`;
-      chatHistory.appendChild(botMsg);
-      chatHistory.scrollTop = chatHistory.scrollHeight;
-
-      saveChatHistory();
-
-      window.location.reload();
-    }
-
-    sendBtn.addEventListener("click", sendMessage);
-    chatInput.addEventListener("keypress", (e) => {
-      if (e.key === "Enter") sendMessage();
-    });
-
-    // Save chat history to chrome.storage
-    function saveChatHistory() {
-      const messages = Array.from(chatHistory.children).map(
-        (el) => el.outerHTML
-      );
-      chrome.storage.local.set({ chatMessages: messages });
-    }
-  })
-  .catch((err) => console.error(err));
+// Watch for URL changes
+setInterval(() => {
+  if (location.href !== lastUrl) {
+    lastUrl = location.href;
+    injectChat();
+  }
+}, 500);

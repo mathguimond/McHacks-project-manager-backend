@@ -22,9 +22,10 @@ def receive_message():
         return jsonify({"error": "Missing 'message' field"}), 400
 
     message = data["message"]
-    asyncio.run(sendMessage(message))
+    response = asyncio.run(sendMessage(message))
+    print(response)
 
-    return jsonify({"status": "ok", "received": message}), 200
+    return jsonify({"status": "ok", "message": response}), 200
 
 
 async def sendMessage(message: str):
@@ -67,6 +68,8 @@ async def sendMessage(message: str):
     # Update a task instruction
     message += " Otherwise, if asked to update a task at the beginning of this message, consider the following instructions in brakets: [Update the specified task with any new details provided at the beginning of this message. Make sure to only update the fields that have been changed or added.]"
 
+    message += " Don't give a long answer with explanations on what you did (like describing tasks created). Simply respond with the result like for example 'I created the project X and generated relevent tasks'. If no set of instructions apply, do not create or update a project or task. Instead, simply respond to the message as a helpful assistant would."
+
     # Send a message 
     response = await client.add_message(
         thread_id=thread.thread_id,
@@ -100,14 +103,8 @@ async def sendMessage(message: str):
             run_id=response.run_id,
             tool_outputs=tool_outputs
         )
-        print(final_response.content)
-
-
-
-
     
-    
-    return jsonify(id=1, **data)
+    return final_response.content
 
             
 
